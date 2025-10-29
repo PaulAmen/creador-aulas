@@ -3,8 +3,8 @@
   <head>
     <base target="_top">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Creador de Aulas</title>
     <style>
-      /* (Tu CSS responsive va aquí, no hay cambios) */
       body {
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
         background-color: #f4f4f4; margin: 0; padding: 15px;
@@ -33,6 +33,7 @@
       button:disabled { background-color: #9e9e9e; cursor: not-allowed; }
       #status {
         margin-top: 20px; font-weight: bold; font-size: 16px;
+        word-wrap: break-word; /* Para que los errores largos no rompan el layout */
       }
       .success { color: green; }
       .error { color: red; }
@@ -56,70 +57,68 @@
     </div>
 
     <script>
-      // !!! PEGA TU URL AQUÍ !!!
-      // Esta es la URL de la aplicación web que copiaste en el PASO 2
-      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykQgSOIPrBrD6xSLMMY67LhdVYJ_-J1j3nbazrK4u8A_irfaMP6qBhbPd3N0RB6HvaRg/exec";
+      // !!! PASO FINAL MUY IMPORTANTE !!!
+      // Debes pegar aquí la URL de tu *NUEVA IMPLEMENTACIÓN* de Apps Script
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwy0x19DeVxRQDoUGczRO4Zc6jFREMw-drJgRsTsRu6dDzsVqX1OgkPI4RTD7-E8pdtNA/exec";
 
-      // Seleccionar elementos
       const button = document.getElementById('createButton');
       const statusDiv = document.getElementById('status');
       const nameInput = document.getElementById('name');
       const sectionInput = document.getElementById('section');
 
-      // Asignar el evento al botón
       button.addEventListener('click', handleCreateClick);
 
       async function handleCreateClick() {
-        // 1. Poner estado de "cargando"
+        if (WEB_APP_URL === "¡PEGA_TU_NUEVA_URL_DE_APPS_SCRIPT_AQUÍ!") {
+          statusDiv.className = "error";
+          statusDiv.innerHTML = "Error: Debes configurar la URL de la API en el archivo index.html";
+          return;
+        }
+
         button.disabled = true;
         statusDiv.className = "loading";
         statusDiv.innerHTML = "Creando curso, por favor espera...";
 
-        // 2. Obtener datos del formulario
         const courseData = {
           name: nameInput.value,
           section: sectionInput.value
         };
 
         try {
-          // 3. Usar 'fetch' para enviar los datos al script
           const response = await fetch(WEB_APP_URL, {
             method: 'POST',
             mode: 'cors', // Habilitar CORS
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'text/plain;charset=utf-8', // Usar text/plain es a veces más simple para Apps Script
             },
-            // Redirigir manualmente si el usuario no está logueado
             redirect: 'manual', 
-            body: JSON.stringify(courseData) // Convertir datos a JSON
+            body: JSON.stringify(courseData) // Convertir datos a JSON string
           });
           
-          // Si la respuesta es tipo 'opaque' o 'opaqueredirect', 
-          // significa que el usuario no está logueado en Google.
           if (response.type === 'opaque' || response.type === 'opaqueredirect') {
-             throw new Error("No estás autenticado. Por favor, asegúrate de estar logueado en tu cuenta de Google (Classroom) en este navegador.");
+             throw new Error("No estás autenticado. Por favor, asegúrate de estar logueado en tu cuenta de Google (Classroom) en este navegador y vuelve a cargar la página.");
           }
 
-          // 4. Leer la respuesta JSON del script
           const result = await response.json();
 
-          // 5. Mostrar éxito o error basado en la respuesta
           if (result.status === 'success') {
             statusDiv.className = "success";
             statusDiv.innerHTML = result.message;
             nameInput.value = "";
             sectionInput.value = "";
           } else {
-            // Error controlado por nuestro script (ej: campos vacíos)
             throw new Error(result.message);
           }
 
         } catch (error) {
-          // Error de red, de login, o del script
           statusDiv.className = "error";
-          statusDiv.innerHTML = `Error: ${error.message}`;
+          // Limpiamos el mensaje de error para que sea más amigable
+          let friendlyError = error.message.includes("Failed to fetch") ? "Error de red. Revisa la consola (F12) para detalles de CORS." : error.message;
+          if (error.message.includes("text/plain")) {
+             friendlyError = "Error de API. Revisa la URL de tu Apps Script.";
+          }
+          statusDiv.innerHTML = `Error: ${friendlyError}`;
         } finally {
-          // 6. Reactivar el botón
           button.disabled = false;
         }
       }
