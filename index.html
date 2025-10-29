@@ -74,7 +74,7 @@
         <p style="margin-top:0; font-weight:bold;">Paso 1: Autorizar Permisos</p>
         <p>¿Primera vez aquí? Haz clic abajo para dar permisos a tu cuenta de Google.</p>
         
-        <a href="¡PEGA_TU_NUEVA_URL_DE_APPS_SCRIPT_AQUÍ!" 
+        <a href="https://script.google.com/macros/s/AKfycbwy0x19DeVxRQDoUGczRO4Zc6jFREMw-drJgRsTsRu6dDzsVqX1OgkPI4RTD7-E8pdtNA/exec" 
            target="_blank" 
            rel="noopener noreferrer" 
            class="auth-button">
@@ -112,7 +112,7 @@
       button.addEventListener('click', handleCreateClick);
 
       async function handleCreateClick() {
-        if (WEB_APP_URL.includes("¡PEGA_TU_NUEVA_URL")) {
+        if (WEB_APP_URL.includes("https://script.google.com/macros/s/AKfycbwy0x19DeVxRQDoUGczRO4Zc6jFREMw-drJgRsTsRu6dDzsVqX1OgkPI4RTD7-E8pdtNA/exec")) {
           statusDiv.className = "error";
           statusDiv.innerHTML = "Error: El desarrollador no ha configurado la URL de la API.";
           return;
