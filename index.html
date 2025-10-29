@@ -100,9 +100,9 @@
       <div id="status"></div>
     </div>
 
-  <script>
-      // Tu URL está configurada correctamente
-      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzsXaCjNlGmMolWgRVXiAkjBN-GHcVcRbN3gxnwDkMHEvhkIWnYuP8rfSVdt_MEMKFAFQ/exec";
+<script>
+      // Esta URL ya es la correcta (la de tu nueva implementación)
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwu4cu8qrWiR4WJTR6XcZWPAdOdT79YGU3IuhEHGN_ZhF-W8y0kM04ZyqK9jOs6w8KbXQ/exec";
 
       const button = document.getElementById('createButton');
       const statusDiv = document.getElementById('status');
@@ -113,8 +113,6 @@
 
       async function handleCreateClick() {
         
-        // --- HEMOS ELIMINADO EL BLOQUE 'if' PROBLEMÁTICO DE AQUÍ ---
-
         button.disabled = true;
         statusDiv.className = "loading";
         statusDiv.innerHTML = "Creando curso, por favor espera...";
@@ -128,7 +126,9 @@
           const response = await fetch(WEB_APP_URL, {
             method: 'POST',
             mode: 'cors',
-            credentials: 'include', // Correcto
+
+            credentials: 'include',
+            
             headers: {
               'Content-Type': 'text/plain;charset=utf-8',
             },
@@ -153,15 +153,16 @@
 
         } catch (error) {
           statusDiv.className = "error";
-          let friendlyError = error.message.includes("Failed to fetch") ? "Error de red. Revisa la consola (F12) para detalles de CORS." : error.message;
-          if (error.message.includes("text/plain")) {
-             friendlyError = "Error de API. Revisa la URL de tu Apps Script.";
+          
+          let friendlyError = error.message;
+          if (error instanceof TypeError && (error.message.includes("Failed to fetch") || error.message.includes("NetworkError"))) {
+             friendlyError = "Error de red o CORS. ¿Autorizaste los permisos (Paso 1) en esta ventana?";
           }
+          
           statusDiv.innerHTML = `Error: ${friendlyError}`;
+          
         } finally {
           button.disabled = false;
         }
       }
     </script>
-  </body>
-</html>
