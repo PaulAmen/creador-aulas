@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+      /* (Tu CSS responsive va aquí, no hay cambios) */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        background-color: #f4f4f4; margin: 0; padding: 15px;
+        display: flex; justify-content: center; align-items: flex-start;
+        min-height: 100vh;
+      }
+      .container {
+        width: 100%; max-width: 500px; background: #ffffff;
+        padding: 25px; border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        box-sizing: border-box;
+      }
+      h2 { color: #4285f4; margin-top: 0; }
+      div { margin-bottom: 20px; }
+      label { display: block; font-weight: bold; margin-bottom: 8px; color: #5f6368; }
+      input[type="text"], button {
+        width: 100%; padding: 12px; font-size: 16px;
+        border: 1px solid #ddd; border-radius: 4px;
+        box-sizing: border-box;
+      }
+      button {
+        background-color: #4285f4; color: white; font-weight: bold;
+        border: none; cursor: pointer; transition: background-color 0.2s;
+      }
+      button:hover { background-color: #3367d6; }
+      button:disabled { background-color: #9e9e9e; cursor: not-allowed; }
+      #status {
+        margin-top: 20px; font-weight: bold; font-size: 16px;
+      }
+      .success { color: green; }
+      .error { color: red; }
+      .loading { color: #5f6368; }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h2>Creador de Cursos de Classroom</h2>
+      <p>Ingresa los detalles del nuevo curso que deseas crear.</p>
+      <div>
+        <label for="name">Nombre del Curso:</label>
+        <input type="text" id="name" placeholder="Ej: Programación 101">
+      </div>
+      <div>
+        <label for="section">Sección (Horario):</label>
+        <input type="text" id="section" placeholder="Ej: Lunes 10:00 - 12:00">
+      </div>
+      <button id="createButton">Crear Curso</button>
+      <div id="status"></div>
+    </div>
+
+    <script>
+      // !!! PEGA TU URL AQUÍ !!!
+      // Esta es la URL de la aplicación web que copiaste en el PASO 2
+      const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbykQgSOIPrBrD6xSLMMY67LhdVYJ_-J1j3nbazrK4u8A_irfaMP6qBhbPd3N0RB6HvaRg/exec";
+
+      // Seleccionar elementos
+      const button = document.getElementById('createButton');
+      const statusDiv = document.getElementById('status');
+      const nameInput = document.getElementById('name');
+      const sectionInput = document.getElementById('section');
+
+      // Asignar el evento al botón
+      button.addEventListener('click', handleCreateClick);
+
+      async function handleCreateClick() {
+        // 1. Poner estado de "cargando"
+        button.disabled = true;
+        statusDiv.className = "loading";
+        statusDiv.innerHTML = "Creando curso, por favor espera...";
+
+        // 2. Obtener datos del formulario
+        const courseData = {
+          name: nameInput.value,
+          section: sectionInput.value
+        };
+
+        try {
+          // 3. Usar 'fetch' para enviar los datos al script
+          const response = await fetch(WEB_APP_URL, {
+            method: 'POST',
+            mode: 'cors', // Habilitar CORS
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            // Redirigir manualmente si el usuario no está logueado
+            redirect: 'manual', 
+            body: JSON.stringify(courseData) // Convertir datos a JSON
+          });
+          
+          // Si la respuesta es tipo 'opaque' o 'opaqueredirect', 
+          // significa que el usuario no está logueado en Google.
+          if (response.type === 'opaque' || response.type === 'opaqueredirect') {
+             throw new Error("No estás autenticado. Por favor, asegúrate de estar logueado en tu cuenta de Google (Classroom) en este navegador.");
+          }
+
+          // 4. Leer la respuesta JSON del script
+          const result = await response.json();
+
+          // 5. Mostrar éxito o error basado en la respuesta
+          if (result.status === 'success') {
+            statusDiv.className = "success";
+            statusDiv.innerHTML = result.message;
+            nameInput.value = "";
+            sectionInput.value = "";
+          } else {
+            // Error controlado por nuestro script (ej: campos vacíos)
+            throw new Error(result.message);
+          }
+
+        } catch (error) {
+          // Error de red, de login, o del script
+          statusDiv.className = "error";
+          statusDiv.innerHTML = `Error: ${error.message}`;
+        } finally {
+          // 6. Reactivar el botón
+          button.disabled = false;
+        }
+      }
+    </script>
+  </body>
+</html>
