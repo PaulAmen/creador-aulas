@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-15 -20 600 160" role="img" aria-label="Orbit">
+  
+  <g class="orbit-isotipo" transform="rotate(12 60 60)">
+    <path
+      class="moon-left"
+      d="M 54 -2 A 60 60 0 0 0 54 122 A 70 70 0 0 1 54 -2 Z"
+      fill="#F20782"
+    />
+    <path
+      class="moon-right"
+      d="M 66 -2 A 60 60 0 0 1 66 122 A 70 70 0 0 0 66 -2 Z"
+      fill="#64748B"
+    />
+  </g>
+
+  
+    
+    <g
+      fill="none"
+      stroke="#0F172A"
+      stroke-width="12"
+      stroke-linecap="butt"
+      stroke-linejoin="miter"
+      stroke-miterlimit="10"
+    >
+      
+      <path d="M 186 120 V 6 H 219 A 27 27 0 0 1 219 60 H 180" />
+      <path d="M 204 60 H 217.5 L 254 120 H 240.5 Z" fill="#0F172A" stroke="none" />
+
+      
+      <path d="M 306 6 H 339 A 27 27 0 0 1 339 60 H 306 V 6 Z M 306 60 H 342 A 27 27 0 0 1 342 114 H 306 V 60 Z" />
+
+      
+      <line x1="426" y1="0" x2="426" y2="120" />
+
+      
+      <path d="M 474 6 H 558 M 516 6 V 120" />
+    </g>
+  
+</svg>
