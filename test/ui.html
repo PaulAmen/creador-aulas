@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Pruebas de interfaz</title>
+</head>
+<body>
+<pre id="results">PENDING</pre>
+<script>
+// Carga la aplicación real (index.html) en un iframe con Google Identity
+// Services y fetch simulados, y ejecuta escenarios de interfaz.
+// Los resultados quedan como JSON en #results (los lee test/ui.test.js).
+(async () => {
+  const results = [];
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function until(fn, what, timeout = 5000) {
+    const t0 = Date.now();
+    while (Date.now() - t0 < timeout) {
+      try { if (fn()) return; } catch (_) { /* aún no */ }
+      await sleep(20);
+    }
+    throw new Error('Tiempo agotado esperando: ' + what);
+  }
+  function check(cond, msg) { if (!cond) throw new Error(msg); }
+  const visible = (el) => Boolean(el) && el.getClientRects().length > 0;
+  const respond = (status, data) => ({ ok: status < 400, status, statusText: '', json: async () => data });
+
+  const source = await (await fetch('/index.html')).text();
+  const stub =
+    '<script>window.google={accounts:{oauth2:{' +
+    'initTokenClient:function(cfg){return{requestAccessToken:function(o){parent.__onRequest(cfg,o);}};},' +
+    'revoke:function(){}}}};' +
+    'window.fetch=function(u,o){return parent.__fetch(String(u),o||{});};<\/script>';
+  const html = source
+    .replace(/<script src="https:\/\/accounts\.google\.com[^>]*><\/script>/, '')
+    .replace('<head>', '<head><base href="/">' + stub);
+  if (html === source) throw new Error('No se pudo preparar index.html');
+
+  let frame = null;
+  async function load() {
+    if (frame) frame.remove();
+    window.__onRequest = () => {};
+    window.__fetch = async () => respond(500, {});
+    frame = document.createElement('iframe');
+    frame.style.cssText = 'width:800px;height:900px';
+    document.body.append(frame);
+    const loaded = new Promise((r) => { frame.onload = r; });
+    frame.srcdoc = html;
+    await loaded;
+    await until(() => frame.contentWindow.Plantilla && frame.contentWindow.onGisLoad, 'scripts de la app');
+    return { w: frame.contentWindow, d: frame.contentDocument, $: (id) => frame.contentDocument.getElementById(id) };
+  }
+
+  async function scenario(name, fn) {
+    try { await fn(); results.push({ name, ok: true }); } catch (e) { results.push({ name, ok: false, error: String(e && e.message || e) }); }
+  }
+
+  function assertStatusVisible($, text) {
+    const s = $('status');
+    check(s.textContent.includes(text), 'el estado no contiene «' + text + '»: «' + s.textContent + '»');
+    check(visible(s), 'el mensaje de estado existe pero no es visible antes de iniciar sesión');
+    check(!visible($('app-view')), 'app-view debería seguir oculto');
+  }
+
+  // ---- Errores antes de iniciar sesión ----
+  await scenario('error al cargar Google se ve antes de iniciar sesión', async () => {
+    const { w, $ } = await load();
+    w.onGisError();
+    assertStatusVisible($, 'No se pudo cargar');
+  });
+
+  await scenario('ventana de acceso cerrada se ve antes de iniciar sesión', async () => {
+    const { w, $ } = await load();
+    w.onGisLoad();
+    window.__onRequest = (cfg) => cfg.error_callback({ type: 'popup_closed' });
+    $('signinButton').click();
+    await until(() => $('status').textContent, 'mensaje de estado');
+    assertStatusVisible($, 'Se cerró la ventana');
+  });
+
+  await scenario('error de acceso de Google se ve antes de iniciar sesión', async () => {
+    const { w, $ } = await load();
+    w.onGisLoad();
+    window.__onRequest = (cfg) => cfg.callback({ error: 'access_denied' });
+    $('signinButton').click();
+    await until(() => $('status').textContent, 'mensaje de estado');
+    assertStatusVisible($, 'access_denied');
+  });
+
+  // ---- Sesión expirada a mitad de los temas y recuperación ----
+  await scenario('tras sesión expirada, volver a iniciar sesión permite completar los temas', async () => {
+    const { w, $ } = await load();
+    w.onGisLoad();
+    let tokens = 0;
+    window.__onRequest = (cfg) => setTimeout(() => cfg.callback({ access_token: 'tok' + (++tokens) }), 0);
+    const server = { courses: 0, topics: [], materials: [], tasks: [], calls: [] };
+    window.__fetch = async (url, opts) => {
+      const method = opts.method || 'GET';
+      const auth = (opts.headers && opts.headers.Authorization) || '';
+      server.calls.push({ method, url, auth });
+      if (url.includes('/userinfo')) return respond(200, { email: 'ana@unesum.edu.ec' });
+      if (method === 'POST' && url.endsWith('/v1/courses')) {
+        server.courses++;
+        return respond(200, { id: 'c1', name: 'n', section: 's', alternateLink: 'https://classroom.google.com/c/c1', enrollmentCode: 'abc' });
+      }
+      if (method === 'GET' && new URL(url).pathname.endsWith('/courseWork')) return respond(200, { courseWork: server.tasks });
+      if (method === 'POST' && url.endsWith('/courseWork')) {
+        const task = { ...JSON.parse(opts.body), id: 'a' + server.tasks.length };
+        server.tasks.push(task);
+        return respond(200, task);
+      }
+      if (method === 'GET' && url.includes('/courseWorkMaterials')) return respond(200, { courseWorkMaterial: server.materials });
+      if (method === 'POST' && url.endsWith('/courseWorkMaterials')) {
+        const m = { ...JSON.parse(opts.body), id: 'm' + server.materials.length };
+        server.materials.push(m);
+        return respond(200, m);
+      }
+      if (method === 'GET' && url.includes('/topics')) return respond(200, { topic: server.topics });
+      if (method === 'POST' && url.endsWith('/topics')) {
+        // El primer token expira tras crear dos temas.
+        if (auth === 'Bearer tok1' && server.topics.length >= 2) return respond(401, { error: { code: 401, message: 'Invalid Credentials', status: 'UNAUTHENTICATED' } });
+        const t = { topicId: 't' + server.topics.length, name: JSON.parse(opts.body).name };
+        server.topics.push(t);
+        return respond(200, t);
+      }
+      return respond(404, {});
+    };
+
+    $('signinButton').click();
+    await until(() => visible($('app-view')), 'vista de la app tras iniciar sesión');
+    const set = (id, v) => { $(id).value = v; $(id).dispatchEvent(new w.Event('input', { bubbles: true })); };
+    set('asignatura', 'Psicología Educativa'); set('paralelo', 'A');
+    $('createButton').click();
+
+    await until(() => $('status').textContent.includes('Volver a iniciar sesión'), 'aviso de sesión expirada');
+    check(server.topics.length === 2, 'se esperaban 2 temas antes del 401, hay ' + server.topics.length);
+    check(visible($('resumeButton')), 'falta «Completar temas pendientes»');
+
+    $('status').querySelector('button').click(); // «Volver a iniciar sesión»
+    await until(() => tokens === 2 && server.calls.filter((c) => c.url.includes('/userinfo')).length === 2, 'segundo inicio de sesión');
+    await sleep(100);
+    check(!$('status').textContent.includes('expiró'), 'tras iniciar sesión sigue el aviso de sesión expirada: «' + $('status').textContent + '»');
+    check(visible($('resumeButton')) && !$('resumeButton').disabled, '«Completar temas pendientes» no está disponible');
+
+    const before = server.calls.length;
+    $('resumeButton').click();
+    await until(() => $('status').textContent.includes('Se creó el aula') || $('status').textContent.includes('expiró'), 'fin de la reanudación');
+    const later = server.calls.slice(before).filter((c) => !c.url.includes('/userinfo'));
+    check(later.length > 0, 'la reanudación no hizo ninguna solicitud');
+    check(later.every((c) => c.auth === 'Bearer tok2'), 'la reanudación no usó el token nuevo: ' + later.map((c) => c.auth || '(sin token)').join(', '));
+    check($('status').textContent.includes('Se creó el aula'), 'la reanudación no terminó: «' + $('status').textContent + '»');
+    check(server.materials.length === 31 && server.tasks.length === 3 && server.materials.every((m) => m.state === 'DRAFT'), 'faltan los materiales o tareas de la plantilla');
+    check(server.courses === 1, 'se crearon ' + server.courses + ' cursos');
+    check(server.topics.length === 9 && new Set(server.topics.map((t) => t.name)).size === 9, 'temas finales incorrectos: ' + server.topics.length);
+  });
+
+  document.getElementById('results').textContent = JSON.stringify(results);
+  document.title = 'DONE';
+})().catch((e) => {
+  document.getElementById('results').textContent = JSON.stringify([{ name: 'arnés', ok: false, error: String(e && e.message || e) }]);
+  document.title = 'DONE';
+});
+</script>
+</body>
+</html>
