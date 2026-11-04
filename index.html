@@ -5,13 +5,16 @@
   <base target="_top">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Creador de aulas UNESUM</title>
-  <meta name="theme-color" content="#4285f4">
+  <meta name="theme-color" content="#1a73e8">
+  <meta name="color-scheme" content="light">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <main class="container">
-    <h1>Creador de aulas de Classroom — UNESUM PII 2026</h1>
-    <p class="intro">Escribe el nombre y crea tu aula. Los temas y materiales en borrador ya están preparados; después solo tendrás que completarlos en Classroom.</p>
+    <header class="app-header">
+      <h1>Creador de aulas de Classroom — UNESUM PII 2026</h1>
+      <p class="intro">Escribe el nombre y crea tu aula. Los temas y materiales en borrador ya están preparados; después solo tendrás que completarlos en Classroom.</p>
+    </header>
 
     <div id="signin-view">
       <button type="button" id="signinButton" disabled>Cargando Google…</button>
@@ -63,7 +66,7 @@
               <div id="jornada-error" class="field-error"></div>
             </div>
           </div>
-          <p class="hint">Periodo: <strong>PII 2026</strong></p>
+          <p class="hint period-hint">Periodo: <strong>PII 2026</strong></p>
 
           <div class="checkbox">
             <input type="checkbox" id="tutor">
